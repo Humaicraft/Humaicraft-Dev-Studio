@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Humaicraft Dev Studio Spike</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Dev Studio Spike</h1>
+      <p class="note">Disposable Chromium capability test. Use only on non-sensitive test pages.</p>
+
+      <form id="viewport-form">
+        <fieldset>
+          <legend>Viewport</legend>
+          <label for="width">Width</label>
+          <input id="width" name="width" type="number" min="320" max="7680" step="1" value="1280" required />
+          <label for="height">Height</label>
+          <input id="height" name="height" type="number" min="240" max="4320" step="1" value="800" required />
+          <button type="submit">Apply viewport</button>
+          <button id="reset" type="button">Reset viewport</button>
+        </fieldset>
+      </form>
+
+      <div class="actions" aria-label="Spike actions">
+        <button id="capture" type="button">Capture visible area</button>
+        <button id="inspect" type="button">Inspect page width</button>
+      </div>
+
+      <p id="status" role="status" aria-live="polite">Ready.</p>
+    </main>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>
