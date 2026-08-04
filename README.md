@@ -2,7 +2,7 @@
 
 Humaicraft Dev Studio is a local-first frontend development workspace for responsive implementation, visual comparison, inspection, screenshots, and review workflows.
 
-The project is currently in the Foundation phase. Product direction, MVP requirements, and the initial architecture are documented before production implementation begins.
+The project is currently validating Chromium Manifest V3 as the first delivery surface before production implementation begins.
 
 ## Product principle
 
@@ -44,6 +44,7 @@ Future integrations must use explicit boundaries and must not become dependencie
 - [Product proposal](docs/proposal/product-proposal.md)
 - [Product requirements](docs/requirements/product-requirements.md)
 - [Initial architecture](docs/architecture/initial-architecture.md)
+- [Chromium delivery-surface spike](docs/spikes/chromium-extension-delivery-surface.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
@@ -58,12 +59,16 @@ GitHub Issues and Pull Requests are the authoritative record for requirements, d
 4. Review before merge.
 5. Update documentation, ROADMAP, and CHANGELOG when required.
 
+## Development environment
+
+Repository tooling uses **Node.js 24**. The current disposable Chromium spike has no build step or runtime dependencies.
+
 ## Status
 
-**M0 — Foundation: In progress**
+**M1 — Viewport Foundation: Chromium delivery-surface spike in progress**
 
 No production feature implementation has started yet.
 
 ## License
 
-License selection is not yet finalized. Do not assume reuse rights until a LICENSE file is approved and added.
+Humaicraft Dev Studio is licensed under the [MIT License](LICENSE).
