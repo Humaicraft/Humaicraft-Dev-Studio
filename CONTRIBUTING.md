@@ -23,12 +23,32 @@ Confirm and record:
 
 Small implementation details may use existing conventions and safe defaults without unnecessary approval requests.
 
+## Issue titles
+
+Use a prefix that communicates the purpose of the Issue:
+
+- `proposal:` for a product, requirement, or design proposal
+- `decision:` for a decision requiring an explicit record
+- `spike:` for evidence-gathering technical investigation
+- `epic:` for a coordinated group of related outcomes
+- `feat:` for a user-facing capability
+- `fix:` for a defect correction
+- `docs:` for documentation-only work
+- `test:` for test coverage or testing infrastructure
+- `refactor:` for behavior-preserving structural work
+- `chore:` for repository or maintenance work
+
+A prefix does not replace a clear title or complete Issue body.
+
 ## Branches
 
 Use a dedicated branch for one clear purpose.
 
 Recommended prefixes:
 
+- `proposal/`
+- `decision/`
+- `spike/`
 - `docs/`
 - `feat/`
 - `fix/`
