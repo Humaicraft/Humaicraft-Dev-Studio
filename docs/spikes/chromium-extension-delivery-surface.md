@@ -36,12 +36,14 @@ Do not use production administration screens, authenticated customer data, payme
 
 | Permission | Experiment | Justification | Production decision |
 | --- | --- | --- | --- |
-| `activeTab` | Current-page actions | Limits page access to explicit user interaction | Pending |
-| `debugger` | Exact viewport override | Required to test CDP emulation feasibility | High-risk; pending evidence |
+| `activeTab` | Current-page actions | Grants temporary access after explicit extension interaction | May not cover asynchronous popup-to-worker execution reliably by itself |
+| `debugger` | Exact viewport override | Required to test CDP emulation feasibility | High-risk; pending recovery evidence |
+| `permissions` | Site-specific permission request | Allows explicit runtime permission prompts | Keep only if optional-host strategy is approved |
 | `scripting` | Width inspection and marker | Runs isolated, explicit page measurement | Pending |
 | `tabs` | Active-tab metadata and capture orchestration | Needed by the current proof of concept | Review whether reducible |
+| Optional `http://*/*`, `https://*/*` | Current-origin access | Requested only for the active page origin immediately before screenshot or inspection | Preferred over permanent broad host access for the spike |
 
-No host permissions, telemetry, remote requests, or persistent storage are included.
+No telemetry, remote requests, or persistent page-content storage are included.
 
 ## Verification matrix
 
@@ -49,19 +51,56 @@ Record evidence; do not mark a result from assumption.
 
 | Scenario | Chrome | Edge | Arc | Brave | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Extension loads | Not tested | Not tested | Not tested | Not tested | |
-| Apply 1280 × 800 | Not tested | Not tested | Not tested | Not tested | |
-| Reset viewport | Not tested | Not tested | Not tested | Not tested | |
+| Extension loads | Pass | Not tested | Not tested | Not tested | Chrome unpacked extension loaded successfully |
+| Apply 1280 × 800 | Pass | Not tested | Not tested | Not tested | Popup reported `Viewport applied: 1280 × 800.` |
+| Reset viewport | Pass | Not tested | Not tested | Not tested | Popup reported override cleared and debugger detached |
 | Navigate while active | Not tested | Not tested | Not tested | Not tested | |
 | Close tab while active | Not tested | Not tested | Not tested | Not tested | |
 | Reload extension while active | Not tested | Not tested | Not tested | Not tested | |
 | Open DevTools conflict | Not tested | Not tested | Not tested | Not tested | |
-| Capture visible area | Not tested | Not tested | Not tested | Not tested | |
-| Inspect width and remove marker | Not tested | Not tested | Not tested | Not tested | |
+| Capture visible area | Blocked before fix | Not tested | Not tested | Not tested | `activeTab` was insufficient in the tested execution path; optional current-origin request added |
+| Inspect width and remove marker | Blocked before fix | Not tested | Not tested | Not tested | SharePoint origin access was denied; optional current-origin request added |
 | Restricted page error | Not tested | Not tested | Not tested | Not tested | |
-| Permission-denied behavior | Not tested | Not tested | Not tested | Not tested | |
+| Permission-denied behavior | Pass | Not tested | Not tested | Not tested | Browser surfaced missing host permission without leaking page content |
+
+## Evidence from first Chrome run
+
+### Viewport apply
+
+```text
+Viewport applied: 1280 × 800.
+Use Reset viewport when finished.
+```
+
+### Viewport reset
+
+```text
+Viewport override cleared and debugger detached.
+```
+
+### Screenshot before optional-origin fix
+
+```text
+Capture failed: Either the '<all_urls>' or 'activeTab' permission is required.
+```
+
+### Inspection before optional-origin fix
+
+The browser rejected scripting access to the active SharePoint origin because the manifest did not grant access to that host.
+
+The full authenticated URL is intentionally not copied into this findings document.
+
+## Finding: activeTab execution boundary
+
+Although the manifest included `activeTab`, screenshot capture and scripting failed when the popup delegated work to the background service worker. This demonstrates that relying on `activeTab` alone is not yet trustworthy for the selected runtime flow.
+
+The spike now requests optional access only to the current HTTP or HTTPS origin at the moment the user selects screenshot or inspection. The user may deny the request, and denial must leave the page and stored state unchanged.
+
+This is evidence for a production requirement: page-access ownership and permission lifetime must be explicit rather than assumed across extension runtimes.
 
 ## Manual verification procedure
+
+After pulling the latest spike branch, reload the unpacked extension before retesting.
 
 ### Viewport
 
@@ -76,22 +115,25 @@ Record evidence; do not mark a result from assumption.
 ### Screenshot
 
 1. Select **Capture visible area**.
-2. Confirm only the visible area is captured.
-3. Confirm the file remains local.
-4. Record behavior with a large viewport, high DPR display, fixed elements, and browser zoom.
+2. Approve current-site access when prompted.
+3. Confirm only the visible area is captured.
+4. Confirm the file remains local.
+5. Record behavior with a large viewport, high DPR display, fixed elements, and browser zoom.
 
 ### Inspection and cleanup
 
 1. Select **Inspect page width**.
-2. Confirm a temporary marker appears.
-3. Confirm the marker disappears automatically.
-4. Inspect the DOM and confirm no marker remains.
-5. Test a page with intentional horizontal overflow.
+2. Approve current-site access when prompted.
+3. Confirm a temporary marker appears.
+4. Confirm the marker disappears automatically.
+5. Inspect the DOM and confirm no marker remains.
+6. Test a page with intentional horizontal overflow.
 
 ### Failure paths
 
 Test:
 
+- Deny the current-site permission request
 - `chrome://extensions/`
 - Chrome Web Store
 - PDF viewer
@@ -110,6 +152,10 @@ Record the exact visible message and whether manual recovery is required.
 ### State restoration
 
 The proof of concept keeps the debugger attached after applying a viewport so reset can clear the override. Reliable production restoration requires explicit persisted job/session state and recovery rules.
+
+### Permission lifetime
+
+Runtime permission grants may outlive one popup interaction depending on browser behavior and user choice. Production design must provide visibility and a way to revoke no-longer-needed site access.
 
 ### Screenshots
 
@@ -130,12 +176,15 @@ If the spike proceeds, browser capabilities should remain behind ports such as:
 - `ViewportController`
 - `ScreenshotCapture`
 - `PageInspector`
+- `PageAccessController`
 
 The popup must not become the domain or application layer. Browser errors must be normalized before presentation.
 
 ## Recommendation
 
-Not decided. Complete the matrix with reproducible evidence, then choose:
+Not decided. Current evidence supports exact viewport apply/reset in Chrome, but screenshot and inspection must be retested after the optional current-origin permission fix. Recovery, DevTools conflict, and browser compatibility remain open.
+
+Choose after evidence is complete:
 
 - Proceed
 - Proceed with constraints
@@ -144,10 +193,11 @@ Not decided. Complete the matrix with reproducible evidence, then choose:
 ## Completion record
 
 - [ ] Verification matrix completed where browsers are available
-- [ ] Exact viewport feasibility decided
+- [x] Exact viewport feasibility demonstrated in Chrome
 - [ ] Debugger conflict and recovery risks decided
 - [ ] Minimum permission set decided
 - [ ] Screenshot limitations decided
 - [ ] Restricted-page behavior decided
-- [ ] Security and accessibility observations recorded
+- [x] Initial permission-denied behavior recorded
+- [ ] Security and accessibility observations completed
 - [ ] Final recommendation approved in Issue #3
