@@ -14,9 +14,10 @@ The extension under `spikes/chromium-extension/` provides:
 
 - Exact viewport override experiment through `chrome.debugger`
 - Viewport reset and debugger detach experiment
+- Debugger attachment status probe
 - Visible-area screenshot capture through `chrome.tabs.captureVisibleTab`
 - Isolated content-script page-width measurement
-- Temporary marker injection with automatic cleanup
+- Temporary marker injection with self-confirmed cleanup
 - Explicit errors for unsupported pages and invalid dimensions
 
 The extension has no build step and no runtime dependencies.
@@ -37,7 +38,7 @@ Do not use production administration screens, authenticated customer data, payme
 | Permission | Experiment | Justification | Production decision |
 | --- | --- | --- | --- |
 | `activeTab` | Current-page actions | Grants temporary access after explicit extension interaction | May not cover asynchronous popup-to-worker execution reliably by itself |
-| `debugger` | Exact viewport override | Required to test CDP emulation feasibility | High-risk; pending recovery evidence |
+| `debugger` | Exact viewport override and status probe | Required to test CDP emulation feasibility and lifecycle state | High-risk; pending recovery evidence |
 | `permissions` | Site-specific permission request | Allows explicit runtime permission prompts | Keep only if optional-host strategy is approved |
 | `scripting` | Width inspection and marker | Runs isolated, explicit page measurement | Viable in Chrome with explicit current-origin permission |
 | `tabs` | Active-tab metadata and capture orchestration | Needed by the current proof of concept | Review whether reducible |
@@ -54,12 +55,12 @@ Record evidence; do not mark a result from assumption.
 | Extension loads | Pass | Not tested | Not tested | Not tested | Chrome unpacked extension loaded successfully |
 | Apply 1280 × 800 | Pass | Not tested | Not tested | Not tested | Popup reported `Viewport applied: 1280 × 800.` |
 | Reset viewport | Pass | Not tested | Not tested | Not tested | Popup reported override cleared and debugger detached |
-| Navigate while active | Not tested | Not tested | Not tested | Not tested | |
-| Close tab while active | Not tested | Not tested | Not tested | Not tested | |
-| Reload extension while active | Not tested | Not tested | Not tested | Not tested | |
-| Open DevTools conflict | Not tested | Not tested | Not tested | Not tested | |
+| Navigate while active | Not tested | Not tested | Not tested | Not tested | Use debugger status probe before and after navigation |
+| Close tab while active | Not tested | Not tested | Not tested | Not tested | Verify no debugger attachment remains on another tab |
+| Reload extension while active | Not tested | Not tested | Not tested | Not tested | Verify browser detaches and page returns to normal state |
+| Open DevTools conflict | Not tested | Not tested | Not tested | Not tested | Record exact visible error and recovery path |
 | Capture visible area | Pass | Not tested | Not tested | Not tested | Optional current-origin permission allowed local visible-area PNG capture |
-| Inspect width and remove marker | Partial pass | Not tested | Not tested | Not tested | Width and overflow measurement succeeded; marker cleanup was not explicitly confirmed |
+| Inspect width and remove marker | Partial pass | Not tested | Not tested | Not tested | Width and overflow measurement succeeded; cleanup probe added for retest |
 | Restricted page error | Not tested | Not tested | Not tested | Not tested | |
 | Permission-denied behavior | Pass | Not tested | Not tested | Not tested | Browser surfaced missing host permission without leaking page content |
 
@@ -95,7 +96,7 @@ Horizontal overflow: detected
 A temporary marker should remove itself automatically.
 ```
 
-The measured page exceeded the CSS viewport by 30 pixels. This demonstrates that isolated scripting can return serializable overflow evidence. Automatic marker cleanup still requires explicit visual or DOM confirmation.
+The measured page exceeded the CSS viewport by 30 pixels. This demonstrates that isolated scripting can return serializable overflow evidence. Automatic marker cleanup still requires retesting with the new cleanup probe.
 
 ### Initial permission failures before the fix
 
@@ -122,22 +123,26 @@ The page inspector returned only serializable measurements:
 - CSS viewport width
 - Document scroll width
 - Boolean horizontal-overflow result
+- Marker cleanup result
 
-It did not return page HTML, form values, cookies, credentials, or live DOM references. This supports keeping future inspection results evidence-based and independent from page object lifetimes.
+It does not return page HTML, form values, cookies, credentials, or live DOM references. This supports keeping future inspection results evidence-based and independent from page object lifetimes.
 
 ## Manual verification procedure
 
 After pulling the latest spike branch, reload the unpacked extension before retesting.
 
-### Viewport
+### Viewport and debugger lifecycle
 
-1. Record the original page state.
+1. Confirm **Check debugger status** reports not attached.
 2. Apply `1280 × 800`.
 3. Confirm the reported CSS viewport with page-side developer tools.
-4. Confirm the browser's debugger warning and user experience.
-5. Navigate once and record whether the override persists.
+4. Confirm **Check debugger status** reports attached.
+5. Navigate once and check debugger status again.
 6. Select **Reset viewport**.
-7. Confirm the override is cleared and the debugger is detached.
+7. Confirm debugger status reports not attached.
+8. Apply the viewport again, then reload the extension from the extension-management page.
+9. Confirm whether the page returns to normal and the debugger is detached.
+10. Repeat with DevTools already open and record the exact conflict behavior.
 
 ### Screenshot
 
@@ -152,7 +157,7 @@ After pulling the latest spike branch, reload the unpacked extension before rete
 1. Select **Inspect page width**.
 2. Approve current-site access when prompted.
 3. Confirm a temporary marker appears.
-4. Confirm the marker disappears automatically.
+4. Confirm the final message reports `Temporary marker cleanup: confirmed`.
 5. Inspect the DOM and confirm no marker remains.
 6. Test a page with intentional horizontal overflow.
 
@@ -174,7 +179,7 @@ Record the exact visible message and whether manual recovery is required.
 
 ### Debugger ownership
 
-`chrome.debugger` may conflict with DevTools or another debugger client. The current spike does not claim reliable ownership recovery after service-worker suspension, extension reload, or browser restart.
+`chrome.debugger` may conflict with DevTools or another debugger client. The status probe identifies whether the active tab is currently attached, but it does not prove ownership or reliable recovery.
 
 ### State restoration
 
@@ -194,13 +199,14 @@ Chrome, Edge, Arc, and Brave are targets for evidence gathering. Compatibility h
 
 ### Page mutation
 
-The marker uses one uniquely identified node and removes itself. Production overlays require stronger lifecycle tracking, cancellation, idempotent cleanup, and navigation handling. Marker cleanup from this run has not yet been explicitly confirmed.
+The marker uses one uniquely identified node, waits for its removal, and reports whether the marker remains. Production overlays still require stronger lifecycle tracking, cancellation, idempotent cleanup, and navigation handling.
 
 ## Preliminary architecture boundary
 
 If the spike proceeds, browser capabilities should remain behind ports such as:
 
 - `ViewportController`
+- `DebuggerLifecycleProbe`
 - `ScreenshotCapture`
 - `PageInspector`
 - `PageAccessController`
@@ -223,7 +229,6 @@ The production architecture must not yet be finalized because the following rema
 
 - Debugger conflict with DevTools
 - Recovery after navigation, tab closure, extension reload, or service-worker suspension
-- Marker cleanup confirmation and navigation cleanup
 - Restricted-page behavior
 - Full-page screenshot strategy
 - Edge, Arc, and Brave compatibility
@@ -239,6 +244,6 @@ The production architecture must not yet be finalized because the following rema
 - [ ] Restricted-page behavior decided
 - [x] Initial permission-denied behavior recorded
 - [x] Isolated overflow evidence demonstrated in Chrome
-- [ ] Marker cleanup explicitly confirmed
+- [ ] Marker cleanup explicitly confirmed with probe
 - [ ] Security and accessibility observations completed
 - [ ] Final recommendation approved in Issue #3
