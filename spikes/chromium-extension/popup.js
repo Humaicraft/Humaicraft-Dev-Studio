@@ -14,6 +14,33 @@ function setStatus(message) {
   status.textContent = message;
 }
 
+async function getActiveHttpOriginPattern() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.url) {
+    throw new Error('No active browser tab is available.');
+  }
+
+  const url = new URL(tab.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('Use a normal HTTP or HTTPS page for this spike.');
+  }
+
+  return `${url.origin}/*`;
+}
+
+async function ensureCurrentOriginAccess() {
+  const origin = await getActiveHttpOriginPattern();
+  const hasAccess = await chrome.permissions.contains({ origins: [origin] });
+  if (hasAccess) {
+    return;
+  }
+
+  const granted = await chrome.permissions.request({ origins: [origin] });
+  if (!granted) {
+    throw new Error('Access to the current site was not granted.');
+  }
+}
+
 async function send(type, payload = {}) {
   setBusy(true);
   setStatus('Running…');
@@ -51,6 +78,7 @@ resetButton.addEventListener('click', async () => {
 
 captureButton.addEventListener('click', async () => {
   try {
+    await ensureCurrentOriginAccess();
     const result = await send('screenshot.captureVisible');
     const link = document.createElement('a');
     link.href = result.dataUrl;
@@ -64,6 +92,7 @@ captureButton.addEventListener('click', async () => {
 
 inspectButton.addEventListener('click', async () => {
   try {
+    await ensureCurrentOriginAccess();
     const result = await send('page.inspectWidth');
     setStatus([
       `Viewport width: ${result.clientWidth}px`,
