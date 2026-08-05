@@ -3,6 +3,7 @@ const MIN_WIDTH = 320;
 const MAX_WIDTH = 7680;
 const MIN_HEIGHT = 240;
 const MAX_HEIGHT = 4320;
+const ownedDebuggerTabs = new Set();
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   handleMessage(message)
@@ -93,7 +94,8 @@ async function getDebuggerStatus(tabId) {
     const targets = await chrome.debugger.getTargets();
     const target = targets.find((candidate) => candidate.tabId === tabId);
     return {
-      attached: target?.attached === true,
+      anyClientAttached: target?.attached === true,
+      ownedByCurrentWorker: ownedDebuggerTabs.has(tabId),
       targetType: target?.type ?? null
     };
   } catch (error) {
@@ -170,6 +172,7 @@ function validateDimension(value, minimum, maximum, name) {
 async function attachDebugger(tabId) {
   try {
     await chrome.debugger.attach({ tabId }, DEBUGGER_VERSION);
+    ownedDebuggerTabs.add(tabId);
   } catch (error) {
     throw normalizeChromeError(error, 'DEBUGGER_ATTACH_FAILED');
   }
@@ -180,6 +183,8 @@ async function detachDebuggerSafely(tabId) {
     await chrome.debugger.detach({ tabId });
   } catch {
     // Cleanup is best-effort because the tab may have closed or detached already.
+  } finally {
+    ownedDebuggerTabs.delete(tabId);
   }
 }
 
