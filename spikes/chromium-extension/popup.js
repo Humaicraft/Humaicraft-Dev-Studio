@@ -1,6 +1,7 @@
 const status = document.querySelector('#status');
 const form = document.querySelector('#viewport-form');
 const resetButton = document.querySelector('#reset');
+const debuggerStatusButton = document.querySelector('#debugger-status');
 const captureButton = document.querySelector('#capture');
 const inspectButton = document.querySelector('#inspect');
 
@@ -76,6 +77,17 @@ resetButton.addEventListener('click', async () => {
   }
 });
 
+debuggerStatusButton.addEventListener('click', async () => {
+  try {
+    const result = await send('debugger.status');
+    setStatus(result.attached
+      ? `Debugger is attached to the active tab${result.targetType ? ` (${result.targetType})` : ''}.`
+      : 'Debugger is not attached to the active tab.');
+  } catch (error) {
+    setStatus(`Debugger status failed: ${error.message}`);
+  }
+});
+
 captureButton.addEventListener('click', async () => {
   try {
     await ensureCurrentOriginAccess();
@@ -98,7 +110,7 @@ inspectButton.addEventListener('click', async () => {
       `Viewport width: ${result.clientWidth}px`,
       `Page scroll width: ${result.scrollWidth}px`,
       `Horizontal overflow: ${result.hasHorizontalOverflow ? 'detected' : 'not detected'}`,
-      'A temporary marker should remove itself automatically.'
+      `Temporary marker cleanup: ${result.markerRemoved ? 'confirmed' : 'failed'}`
     ].join('\n'));
   } catch (error) {
     setStatus(`Inspection failed: ${error.message}`);
