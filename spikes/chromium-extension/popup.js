@@ -6,6 +6,14 @@ const recoveryStatusButton = document.querySelector('#recovery-status');
 const captureButton = document.querySelector('#capture');
 const inspectButton = document.querySelector('#inspect');
 
+class ExtensionResponseError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = 'ExtensionResponseError';
+    this.code = code;
+  }
+}
+
 function setBusy(isBusy) {
   for (const element of document.querySelectorAll('button, input')) {
     element.disabled = isBusy;
@@ -14,6 +22,14 @@ function setBusy(isBusy) {
 
 function setStatus(message) {
   status.textContent = message;
+}
+
+function userFacingError(error) {
+  if (error instanceof ExtensionResponseError && error.code === 'UNSUPPORTED_MESSAGE') {
+    return 'The popup and background worker are different versions. Reload the unpacked extension, then reopen this popup.';
+  }
+
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function getActiveHttpOriginPattern() {
@@ -49,7 +65,10 @@ async function send(type, payload = {}) {
   try {
     const response = await chrome.runtime.sendMessage({ version: 1, type, payload });
     if (!response?.ok) {
-      throw new Error(response?.error?.message ?? 'Unknown extension error.');
+      throw new ExtensionResponseError(
+        response?.error?.code ?? 'UNKNOWN_EXTENSION_ERROR',
+        response?.error?.message ?? 'Unknown extension error.'
+      );
     }
     return response.data;
   } finally {
@@ -79,7 +98,7 @@ form.addEventListener('submit', async (event) => {
     const result = await send('viewport.apply', { width, height });
     setStatus(`Viewport applied: ${result.width} × ${result.height}.\nUse Reset viewport when finished.`);
   } catch (error) {
-    setStatus(`Viewport failed: ${error.message}`);
+    setStatus(`Viewport failed: ${userFacingError(error)}`);
   }
 });
 
@@ -88,7 +107,7 @@ resetButton.addEventListener('click', async () => {
     await send('viewport.reset');
     setStatus('Viewport override cleared and this worker released its debugger session.');
   } catch (error) {
-    setStatus(`Reset failed: ${error.message}`);
+    setStatus(`Reset failed: ${userFacingError(error)}`);
   }
 });
 
@@ -97,7 +116,7 @@ debuggerStatusButton.addEventListener('click', async () => {
     const result = await send('debugger.status');
     setStatus(debuggerOwnershipMessage(result));
   } catch (error) {
-    setStatus(`Debugger status failed: ${error.message}`);
+    setStatus(`Debugger status failed: ${userFacingError(error)}`);
   }
 });
 
@@ -122,7 +141,7 @@ recoveryStatusButton.addEventListener('click', async () => {
 
     setStatus(lines.join('\n'));
   } catch (error) {
-    setStatus(`Recovery status failed: ${error.message}`);
+    setStatus(`Recovery status failed: ${userFacingError(error)}`);
   }
 });
 
@@ -136,7 +155,7 @@ captureButton.addEventListener('click', async () => {
     link.click();
     setStatus(`Visible-area screenshot prepared: ${result.fileName}`);
   } catch (error) {
-    setStatus(`Capture failed: ${error.message}`);
+    setStatus(`Capture failed: ${userFacingError(error)}`);
   }
 });
 
@@ -151,6 +170,6 @@ inspectButton.addEventListener('click', async () => {
       `Temporary marker cleanup: ${result.markerRemoved ? 'confirmed' : 'failed'}`
     ].join('\n'));
   } catch (error) {
-    setStatus(`Inspection failed: ${error.message}`);
+    setStatus(`Inspection failed: ${userFacingError(error)}`);
   }
 });
