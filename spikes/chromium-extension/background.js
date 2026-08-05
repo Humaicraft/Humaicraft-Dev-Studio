@@ -26,6 +26,8 @@ async function handleMessage(message) {
       return applyViewport(tab.id, message.payload);
     case 'viewport.reset':
       return resetViewport(tab.id);
+    case 'debugger.status':
+      return getDebuggerStatus(tab.id);
     case 'screenshot.captureVisible':
       return captureVisible(tab.windowId);
     case 'page.inspectWidth':
@@ -86,6 +88,19 @@ async function resetViewport(tabId) {
   return { reset: true };
 }
 
+async function getDebuggerStatus(tabId) {
+  try {
+    const targets = await chrome.debugger.getTargets();
+    const target = targets.find((candidate) => candidate.tabId === tabId);
+    return {
+      attached: target?.attached === true,
+      targetType: target?.type ?? null
+    };
+  } catch (error) {
+    throw normalizeChromeError(error, 'DEBUGGER_STATUS_FAILED');
+  }
+}
+
 async function captureVisible(windowId) {
   try {
     const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: 'png' });
@@ -103,7 +118,7 @@ async function inspectPageWidth(tabId) {
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
       world: 'ISOLATED',
-      func: () => {
+      func: async () => {
         const markerId = 'humaicraft-dev-studio-spike-marker';
         document.getElementById(markerId)?.remove();
 
@@ -122,13 +137,20 @@ async function inspectPageWidth(tabId) {
           pointerEvents: 'none'
         });
         document.documentElement.append(marker);
-        globalThis.setTimeout(() => marker.remove(), 1500);
 
         const root = document.documentElement;
-        return {
+        const result = {
           clientWidth: root.clientWidth,
           scrollWidth: root.scrollWidth,
           hasHorizontalOverflow: root.scrollWidth > root.clientWidth + 1
+        };
+
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 1500));
+        marker.remove();
+
+        return {
+          ...result,
+          markerRemoved: document.getElementById(markerId) === null
         };
       }
     });
