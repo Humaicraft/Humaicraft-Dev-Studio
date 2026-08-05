@@ -39,7 +39,7 @@ Do not use production administration screens, authenticated customer data, payme
 | `activeTab` | Current-page actions | Grants temporary access after explicit extension interaction | May not cover asynchronous popup-to-worker execution reliably by itself |
 | `debugger` | Exact viewport override | Required to test CDP emulation feasibility | High-risk; pending recovery evidence |
 | `permissions` | Site-specific permission request | Allows explicit runtime permission prompts | Keep only if optional-host strategy is approved |
-| `scripting` | Width inspection and marker | Runs isolated, explicit page measurement | Pending |
+| `scripting` | Width inspection and marker | Runs isolated, explicit page measurement | Viable in Chrome with explicit current-origin permission |
 | `tabs` | Active-tab metadata and capture orchestration | Needed by the current proof of concept | Review whether reducible |
 | Optional `http://*/*`, `https://*/*` | Current-origin access | Requested only for the active page origin immediately before screenshot or inspection | Preferred over permanent broad host access for the spike |
 
@@ -58,12 +58,12 @@ Record evidence; do not mark a result from assumption.
 | Close tab while active | Not tested | Not tested | Not tested | Not tested | |
 | Reload extension while active | Not tested | Not tested | Not tested | Not tested | |
 | Open DevTools conflict | Not tested | Not tested | Not tested | Not tested | |
-| Capture visible area | Blocked before fix | Not tested | Not tested | Not tested | `activeTab` was insufficient in the tested execution path; optional current-origin request added |
-| Inspect width and remove marker | Blocked before fix | Not tested | Not tested | Not tested | SharePoint origin access was denied; optional current-origin request added |
+| Capture visible area | Pass | Not tested | Not tested | Not tested | Optional current-origin permission allowed local visible-area PNG capture |
+| Inspect width and remove marker | Partial pass | Not tested | Not tested | Not tested | Width and overflow measurement succeeded; marker cleanup was not explicitly confirmed |
 | Restricted page error | Not tested | Not tested | Not tested | Not tested | |
 | Permission-denied behavior | Pass | Not tested | Not tested | Not tested | Browser surfaced missing host permission without leaking page content |
 
-## Evidence from first Chrome run
+## Evidence from Chrome runs
 
 ### Viewport apply
 
@@ -78,25 +78,52 @@ Use Reset viewport when finished.
 Viewport override cleared and debugger detached.
 ```
 
-### Screenshot before optional-origin fix
+### Screenshot after optional-origin fix
+
+```text
+Visible-area screenshot prepared: humaicraft-dev-studio-visible-1785892206897.png
+```
+
+This demonstrates that visible-area capture can remain local and can succeed after explicit current-origin permission is granted.
+
+### Inspection after optional-origin fix
+
+```text
+Viewport width: 1280px
+Page scroll width: 1310px
+Horizontal overflow: detected
+A temporary marker should remove itself automatically.
+```
+
+The measured page exceeded the CSS viewport by 30 pixels. This demonstrates that isolated scripting can return serializable overflow evidence. Automatic marker cleanup still requires explicit visual or DOM confirmation.
+
+### Initial permission failures before the fix
 
 ```text
 Capture failed: Either the '<all_urls>' or 'activeTab' permission is required.
 ```
 
-### Inspection before optional-origin fix
-
-The browser rejected scripting access to the active SharePoint origin because the manifest did not grant access to that host.
-
-The full authenticated URL is intentionally not copied into this findings document.
+The browser also rejected scripting access to the active SharePoint origin because the manifest did not grant access to that host. The full authenticated URL is intentionally not copied into this findings document.
 
 ## Finding: activeTab execution boundary
 
-Although the manifest included `activeTab`, screenshot capture and scripting failed when the popup delegated work to the background service worker. This demonstrates that relying on `activeTab` alone is not yet trustworthy for the selected runtime flow.
+Although the manifest included `activeTab`, screenshot capture and scripting failed when the popup delegated work to the background service worker. This demonstrates that relying on `activeTab` alone is not trustworthy for the selected runtime flow.
 
 The spike now requests optional access only to the current HTTP or HTTPS origin at the moment the user selects screenshot or inspection. The user may deny the request, and denial must leave the page and stored state unchanged.
 
+Retesting demonstrated that this current-origin permission strategy enables both visible screenshot capture and isolated page-width inspection in Chrome.
+
 This is evidence for a production requirement: page-access ownership and permission lifetime must be explicit rather than assumed across extension runtimes.
+
+## Finding: overflow evidence boundary
+
+The page inspector returned only serializable measurements:
+
+- CSS viewport width
+- Document scroll width
+- Boolean horizontal-overflow result
+
+It did not return page HTML, form values, cookies, credentials, or live DOM references. This supports keeping future inspection results evidence-based and independent from page object lifetimes.
 
 ## Manual verification procedure
 
@@ -163,11 +190,11 @@ The proof of concept captures only the visible tab area. Full-page capture, scro
 
 ### Browser differences
 
-Chrome, Edge, Arc, and Brave are targets for evidence gathering. Compatibility has not yet been demonstrated.
+Chrome, Edge, Arc, and Brave are targets for evidence gathering. Compatibility has not yet been demonstrated outside Chrome.
 
 ### Page mutation
 
-The marker uses one uniquely identified node and removes itself. Production overlays require stronger lifecycle tracking, cancellation, idempotent cleanup, and navigation handling.
+The marker uses one uniquely identified node and removes itself. Production overlays require stronger lifecycle tracking, cancellation, idempotent cleanup, and navigation handling. Marker cleanup from this run has not yet been explicitly confirmed.
 
 ## Preliminary architecture boundary
 
@@ -182,22 +209,36 @@ The popup must not become the domain or application layer. Browser errors must b
 
 ## Recommendation
 
-Not decided. Current evidence supports exact viewport apply/reset in Chrome, but screenshot and inspection must be retested after the optional current-origin permission fix. Recovery, DevTools conflict, and browser compatibility remain open.
+**Preliminary recommendation: Proceed with constraints.**
 
-Choose after evidence is complete:
+Current Chrome evidence demonstrates that the following core capabilities are technically viable:
 
-- Proceed
-- Proceed with constraints
-- Reject extension-first delivery
+- Exact viewport apply
+- Explicit viewport reset and debugger detach
+- Local visible-area screenshot capture
+- Isolated width and overflow inspection
+- Optional current-origin permission requests instead of permanent broad host access
+
+The production architecture must not yet be finalized because the following remain unresolved:
+
+- Debugger conflict with DevTools
+- Recovery after navigation, tab closure, extension reload, or service-worker suspension
+- Marker cleanup confirmation and navigation cleanup
+- Restricted-page behavior
+- Full-page screenshot strategy
+- Edge, Arc, and Brave compatibility
 
 ## Completion record
 
 - [ ] Verification matrix completed where browsers are available
 - [x] Exact viewport feasibility demonstrated in Chrome
 - [ ] Debugger conflict and recovery risks decided
-- [ ] Minimum permission set decided
-- [ ] Screenshot limitations decided
+- [ ] Minimum permission set finalized
+- [x] Visible-area screenshot feasibility demonstrated in Chrome
+- [ ] Full screenshot limitations decided
 - [ ] Restricted-page behavior decided
 - [x] Initial permission-denied behavior recorded
+- [x] Isolated overflow evidence demonstrated in Chrome
+- [ ] Marker cleanup explicitly confirmed
 - [ ] Security and accessibility observations completed
 - [ ] Final recommendation approved in Issue #3
