@@ -14,10 +14,9 @@ The extension under `spikes/chromium-extension/` provides:
 
 - Exact viewport override experiment through `chrome.debugger`
 - Viewport reset and debugger detach experiment
-- Debugger attachment status probe
 - Visible-area screenshot capture through `chrome.tabs.captureVisibleTab`
 - Isolated content-script page-width measurement
-- Temporary marker injection with self-confirmed cleanup
+- Temporary marker injection with automatic cleanup
 - Explicit errors for unsupported pages and invalid dimensions
 
 The extension has no build step and no runtime dependencies.
@@ -38,11 +37,12 @@ Do not use production administration screens, authenticated customer data, payme
 | Permission | Experiment | Justification | Production decision |
 | --- | --- | --- | --- |
 | `activeTab` | Current-page actions | Grants temporary access after explicit extension interaction | May not cover asynchronous popup-to-worker execution reliably by itself |
-| `debugger` | Exact viewport override and status probe | Required to test CDP emulation feasibility and lifecycle state | High-risk; pending recovery evidence |
-| `permissions` | Site-specific permission request | Allows explicit runtime permission prompts | Keep only if optional-host strategy is approved |
+| `debugger` | Exact viewport override | Required to test CDP emulation feasibility | High-risk; pending recovery evidence |
 | `scripting` | Width inspection and marker | Runs isolated, explicit page measurement | Viable in Chrome with explicit current-origin permission |
 | `tabs` | Active-tab metadata and capture orchestration | Needed by the current proof of concept | Review whether reducible |
 | Optional `http://*/*`, `https://*/*` | Current-origin access | Requested only for the active page origin immediately before screenshot or inspection | Preferred over permanent broad host access for the spike |
+
+The Permissions API does not require a manifest permission named `permissions`. Chrome reported that entry as unknown, so it was removed in spike version `0.0.3`.
 
 No telemetry, remote requests, or persistent page-content storage are included.
 
@@ -54,15 +54,16 @@ Record evidence; do not mark a result from assumption.
 | --- | --- | --- | --- | --- | --- |
 | Extension loads | Pass | Not tested | Not tested | Not tested | Chrome unpacked extension loaded successfully |
 | Apply 1280 × 800 | Pass | Not tested | Not tested | Not tested | Popup reported `Viewport applied: 1280 × 800.` |
-| Reset viewport | Pass | Not tested | Not tested | Not tested | Popup reported override cleared and debugger detached |
-| Navigate while active | Not tested | Not tested | Not tested | Not tested | Use debugger status probe before and after navigation |
-| Close tab while active | Not tested | Not tested | Not tested | Not tested | Verify no debugger attachment remains on another tab |
-| Reload extension while active | Not tested | Not tested | Not tested | Not tested | Verify browser detaches and page returns to normal state |
-| Open DevTools conflict | Not tested | Not tested | Not tested | Not tested | Record exact visible error and recovery path |
+| Reset viewport | Partial pass | Not tested | Not tested | Not tested | Reset reported success, but another or unknown debugger client remained attached |
+| Navigate while active | Not tested | Not tested | Not tested | Not tested | |
+| Close tab while active | Not tested | Not tested | Not tested | Not tested | |
+| Reload extension while active | Not tested | Not tested | Not tested | Not tested | |
+| Open DevTools conflict | Evidence found | Not tested | Not tested | Not tested | Debugger target was attached before apply and remained attached after reset; ownership was ambiguous |
 | Capture visible area | Pass | Not tested | Not tested | Not tested | Optional current-origin permission allowed local visible-area PNG capture |
-| Inspect width and remove marker | Partial pass | Not tested | Not tested | Not tested | Width and overflow measurement succeeded; cleanup probe added for retest |
+| Inspect width and remove marker | Pass | Not tested | Not tested | Not tested | Width and overflow measurement succeeded; marker cleanup confirmed |
 | Restricted page error | Not tested | Not tested | Not tested | Not tested | |
 | Permission-denied behavior | Pass | Not tested | Not tested | Not tested | Browser surfaced missing host permission without leaking page content |
+| Manifest validation | Fixed | Not tested | Not tested | Not tested | Removed unknown `permissions` manifest entry |
 
 ## Evidence from Chrome runs
 
@@ -79,6 +80,26 @@ Use Reset viewport when finished.
 Viewport override cleared and debugger detached.
 ```
 
+The target still appeared as debugger-attached after reset. `chrome.debugger.getTargets()` reports whether any debugger client is attached, but does not identify which client owns the session. The spike therefore no longer describes every attached target as owned by Humaicraft Dev Studio.
+
+### Debugger status sequence
+
+Before apply, after apply, and after reset, the original checker reported:
+
+```text
+Debugger is attached to the active tab (page).
+```
+
+This is evidence that debugger ownership cannot be inferred from target attachment alone. Possible causes include DevTools, another debugger client, or a debugger session surviving a service-worker lifecycle boundary.
+
+Spike version `0.0.3` now distinguishes:
+
+- A debugger session attached and tracked by the current extension service-worker instance
+- A debugger client attached with unknown or external ownership
+- No debugger client attached
+
+The in-memory ownership set is intentionally not treated as durable production state because Manifest V3 service workers may suspend.
+
 ### Screenshot after optional-origin fix
 
 ```text
@@ -93,10 +114,20 @@ This demonstrates that visible-area capture can remain local and can succeed aft
 Viewport width: 1280px
 Page scroll width: 1310px
 Horizontal overflow: detected
-A temporary marker should remove itself automatically.
+Temporary marker cleanup: confirmed
 ```
 
-The measured page exceeded the CSS viewport by 30 pixels. This demonstrates that isolated scripting can return serializable overflow evidence. Automatic marker cleanup still requires retesting with the new cleanup probe.
+The measured page exceeded the CSS viewport by 30 pixels. This demonstrates that isolated scripting can return serializable overflow evidence and can confirm cleanup of its temporary marker.
+
+### Manifest warning
+
+Chrome reported:
+
+```text
+Permission 'permissions' is unknown.
+```
+
+The invalid entry was removed. Runtime calls to `chrome.permissions.contains()` and `chrome.permissions.request()` continue to rely on `optional_host_permissions`, not a separate API permission.
 
 ### Initial permission failures before the fix
 
@@ -116,6 +147,21 @@ Retesting demonstrated that this current-origin permission strategy enables both
 
 This is evidence for a production requirement: page-access ownership and permission lifetime must be explicit rather than assumed across extension runtimes.
 
+## Finding: debugger ownership boundary
+
+`chrome.debugger.getTargets()` can show that a target is attached, but it cannot prove that the current service-worker instance owns that attachment.
+
+Production design must therefore:
+
+- Track extension-owned sessions explicitly
+- Treat in-memory ownership as volatile
+- Persist only the minimum recovery metadata needed
+- Reconcile persisted state with current browser targets after worker restart
+- Never detach a debugger client that cannot be attributed safely
+- Surface ambiguous ownership honestly to the user
+
+The current spike tracks ownership only for the lifetime of the current worker. This is sufficient for evidence gathering but not production recovery.
+
 ## Finding: overflow evidence boundary
 
 The page inspector returned only serializable measurements:
@@ -125,24 +171,25 @@ The page inspector returned only serializable measurements:
 - Boolean horizontal-overflow result
 - Marker cleanup result
 
-It does not return page HTML, form values, cookies, credentials, or live DOM references. This supports keeping future inspection results evidence-based and independent from page object lifetimes.
+It did not return page HTML, form values, cookies, credentials, or live DOM references. This supports keeping future inspection results evidence-based and independent from page object lifetimes.
 
 ## Manual verification procedure
 
 After pulling the latest spike branch, reload the unpacked extension before retesting.
 
-### Viewport and debugger lifecycle
+### Viewport and debugger ownership
 
-1. Confirm **Check debugger status** reports not attached.
-2. Apply `1280 × 800`.
-3. Confirm the reported CSS viewport with page-side developer tools.
-4. Confirm **Check debugger status** reports attached.
-5. Navigate once and check debugger status again.
-6. Select **Reset viewport**.
-7. Confirm debugger status reports not attached.
-8. Apply the viewport again, then reload the extension from the extension-management page.
-9. Confirm whether the page returns to normal and the debugger is detached.
-10. Repeat with DevTools already open and record the exact conflict behavior.
+1. Close DevTools for the test tab.
+2. Reload the unpacked extension.
+3. Select **Check debugger status**.
+4. Record whether there is no client, an unknown client, or a session owned by the current worker.
+5. Apply `1280 × 800`.
+6. Select **Check debugger status** again.
+7. Confirm the current worker reports ownership.
+8. Select **Reset viewport**.
+9. Select **Check debugger status** again.
+10. Confirm the current worker no longer reports ownership.
+11. If another client remains attached, open and close DevTools deliberately and compare the result.
 
 ### Screenshot
 
@@ -157,9 +204,8 @@ After pulling the latest spike branch, reload the unpacked extension before rete
 1. Select **Inspect page width**.
 2. Approve current-site access when prompted.
 3. Confirm a temporary marker appears.
-4. Confirm the final message reports `Temporary marker cleanup: confirmed`.
-5. Inspect the DOM and confirm no marker remains.
-6. Test a page with intentional horizontal overflow.
+4. Confirm the final status reports `Temporary marker cleanup: confirmed`.
+5. Test a page with intentional horizontal overflow.
 
 ### Failure paths
 
@@ -179,11 +225,11 @@ Record the exact visible message and whether manual recovery is required.
 
 ### Debugger ownership
 
-`chrome.debugger` may conflict with DevTools or another debugger client. The status probe identifies whether the active tab is currently attached, but it does not prove ownership or reliable recovery.
+`chrome.debugger` may conflict with DevTools or another debugger client. Target attachment alone cannot identify ownership. The current spike only tracks sessions attached by the current live service-worker instance.
 
 ### State restoration
 
-The proof of concept keeps the debugger attached after applying a viewport so reset can clear the override. Reliable production restoration requires explicit persisted job/session state and recovery rules.
+The proof of concept keeps the debugger attached after applying a viewport so reset can clear the override. Reliable production restoration requires explicit persisted job/session state, reconciliation after worker restart, and safe handling of ambiguous ownership.
 
 ### Permission lifetime
 
@@ -199,14 +245,14 @@ Chrome, Edge, Arc, and Brave are targets for evidence gathering. Compatibility h
 
 ### Page mutation
 
-The marker uses one uniquely identified node, waits for its removal, and reports whether the marker remains. Production overlays still require stronger lifecycle tracking, cancellation, idempotent cleanup, and navigation handling.
+Temporary marker cleanup is confirmed in the tested Chrome path. Production overlays still require stronger lifecycle tracking, cancellation, idempotent cleanup, and navigation handling.
 
 ## Preliminary architecture boundary
 
 If the spike proceeds, browser capabilities should remain behind ports such as:
 
 - `ViewportController`
-- `DebuggerLifecycleProbe`
+- `DebuggerSessionRepository`
 - `ScreenshotCapture`
 - `PageInspector`
 - `PageAccessController`
@@ -220,13 +266,15 @@ The popup must not become the domain or application layer. Browser errors must b
 Current Chrome evidence demonstrates that the following core capabilities are technically viable:
 
 - Exact viewport apply
-- Explicit viewport reset and debugger detach
+- Explicit viewport reset command
 - Local visible-area screenshot capture
 - Isolated width and overflow inspection
+- Verified temporary-marker cleanup
 - Optional current-origin permission requests instead of permanent broad host access
 
 The production architecture must not yet be finalized because the following remain unresolved:
 
+- Durable debugger-session ownership and recovery
 - Debugger conflict with DevTools
 - Recovery after navigation, tab closure, extension reload, or service-worker suspension
 - Restricted-page behavior
@@ -244,6 +292,7 @@ The production architecture must not yet be finalized because the following rema
 - [ ] Restricted-page behavior decided
 - [x] Initial permission-denied behavior recorded
 - [x] Isolated overflow evidence demonstrated in Chrome
-- [ ] Marker cleanup explicitly confirmed with probe
+- [x] Marker cleanup explicitly confirmed
+- [x] Invalid manifest permission removed
 - [ ] Security and accessibility observations completed
 - [ ] Final recommendation approved in Issue #3
