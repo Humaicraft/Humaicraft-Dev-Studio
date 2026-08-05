@@ -2,6 +2,7 @@ const status = document.querySelector('#status');
 const form = document.querySelector('#viewport-form');
 const resetButton = document.querySelector('#reset');
 const debuggerStatusButton = document.querySelector('#debugger-status');
+const recoveryStatusButton = document.querySelector('#recovery-status');
 const captureButton = document.querySelector('#capture');
 const inspectButton = document.querySelector('#inspect');
 
@@ -56,6 +57,20 @@ async function send(type, payload = {}) {
   }
 }
 
+function debuggerOwnershipMessage(result) {
+  const type = result.targetType ? ` (${result.targetType})` : '';
+
+  if (result.ownedByCurrentWorker) {
+    return `This extension worker owns a debugger session for the active tab${type}.`;
+  }
+
+  if (result.anyClientAttached) {
+    return `A debugger client is attached to the active tab${type}, but ownership cannot be attributed to this extension worker.`;
+  }
+
+  return 'No debugger client is attached to the active tab.';
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const width = Number(form.elements.width.value);
@@ -80,21 +95,34 @@ resetButton.addEventListener('click', async () => {
 debuggerStatusButton.addEventListener('click', async () => {
   try {
     const result = await send('debugger.status');
-    const type = result.targetType ? ` (${result.targetType})` : '';
-
-    if (result.ownedByCurrentWorker) {
-      setStatus(`This extension worker owns a debugger session for the active tab${type}.`);
-      return;
-    }
-
-    if (result.anyClientAttached) {
-      setStatus(`A debugger client is attached to the active tab${type}, but ownership cannot be attributed to this extension worker.`);
-      return;
-    }
-
-    setStatus('No debugger client is attached to the active tab.');
+    setStatus(debuggerOwnershipMessage(result));
   } catch (error) {
     setStatus(`Debugger status failed: ${error.message}`);
+  }
+});
+
+recoveryStatusButton.addEventListener('click', async () => {
+  try {
+    const result = await send('recovery.status');
+    const lines = [debuggerOwnershipMessage(result)];
+
+    if (result.sessionMatchesActiveTab && result.session) {
+      lines.push(`Stored viewport session: ${result.session.width} × ${result.session.height}.`);
+    } else if (result.session) {
+      lines.push('A stored viewport session exists for another tab.');
+    } else {
+      lines.push('No stored viewport session is available in this extension session.');
+    }
+
+    if (result.lastDetach) {
+      lines.push(`Last debugger detach reason: ${result.lastDetach.reason}.`);
+    } else {
+      lines.push('No debugger detach event has been recorded in this extension session.');
+    }
+
+    setStatus(lines.join('\n'));
+  } catch (error) {
+    setStatus(`Recovery status failed: ${error.message}`);
   }
 });
 
