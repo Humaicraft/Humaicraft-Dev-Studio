@@ -71,7 +71,7 @@ form.addEventListener('submit', async (event) => {
 resetButton.addEventListener('click', async () => {
   try {
     await send('viewport.reset');
-    setStatus('Viewport override cleared and debugger detached.');
+    setStatus('Viewport override cleared and this worker released its debugger session.');
   } catch (error) {
     setStatus(`Reset failed: ${error.message}`);
   }
@@ -80,9 +80,19 @@ resetButton.addEventListener('click', async () => {
 debuggerStatusButton.addEventListener('click', async () => {
   try {
     const result = await send('debugger.status');
-    setStatus(result.attached
-      ? `Debugger is attached to the active tab${result.targetType ? ` (${result.targetType})` : ''}.`
-      : 'Debugger is not attached to the active tab.');
+    const type = result.targetType ? ` (${result.targetType})` : '';
+
+    if (result.ownedByCurrentWorker) {
+      setStatus(`This extension worker owns a debugger session for the active tab${type}.`);
+      return;
+    }
+
+    if (result.anyClientAttached) {
+      setStatus(`A debugger client is attached to the active tab${type}, but ownership cannot be attributed to this extension worker.`);
+      return;
+    }
+
+    setStatus('No debugger client is attached to the active tab.');
   } catch (error) {
     setStatus(`Debugger status failed: ${error.message}`);
   }
