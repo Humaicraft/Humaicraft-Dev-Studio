@@ -3,7 +3,24 @@ const MIN_WIDTH = 320;
 const MAX_WIDTH = 7680;
 const MIN_HEIGHT = 240;
 const MAX_HEIGHT = 4320;
+const SESSION_STORAGE_KEY = 'viewportSession';
+const DETACH_STORAGE_KEY = 'lastDebuggerDetach';
 const ownedDebuggerTabs = new Set();
+
+chrome.debugger.onDetach.addListener((source, reason) => {
+  if (!source.tabId) {
+    return;
+  }
+
+  ownedDebuggerTabs.delete(source.tabId);
+  void chrome.storage.session.set({
+    [DETACH_STORAGE_KEY]: {
+      tabId: source.tabId,
+      reason,
+      recordedAt: Date.now()
+    }
+  });
+});
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   handleMessage(message)
@@ -29,6 +46,8 @@ async function handleMessage(message) {
       return resetViewport(tab.id);
     case 'debugger.status':
       return getDebuggerStatus(tab.id);
+    case 'recovery.status':
+      return getRecoveryStatus(tab.id);
     case 'screenshot.captureVisible':
       return captureVisible(tab.windowId);
     case 'page.inspectWidth':
@@ -71,6 +90,14 @@ async function applyViewport(tabId, payload) {
       positionY: 0,
       dontSetVisibleSize: false
     });
+    await chrome.storage.session.set({
+      [SESSION_STORAGE_KEY]: {
+        tabId,
+        width,
+        height,
+        appliedAt: Date.now()
+      }
+    });
     return { width, height };
   } catch (error) {
     await detachDebuggerSafely(tabId);
@@ -85,6 +112,7 @@ async function resetViewport(tabId) {
     throw normalizeChromeError(error, 'VIEWPORT_RESET_FAILED');
   } finally {
     await detachDebuggerSafely(tabId);
+    await chrome.storage.session.remove(SESSION_STORAGE_KEY);
   }
   return { reset: true };
 }
@@ -101,6 +129,20 @@ async function getDebuggerStatus(tabId) {
   } catch (error) {
     throw normalizeChromeError(error, 'DEBUGGER_STATUS_FAILED');
   }
+}
+
+async function getRecoveryStatus(tabId) {
+  const debuggerStatus = await getDebuggerStatus(tabId);
+  const stored = await chrome.storage.session.get([SESSION_STORAGE_KEY, DETACH_STORAGE_KEY]);
+  const session = stored[SESSION_STORAGE_KEY] ?? null;
+  const lastDetach = stored[DETACH_STORAGE_KEY] ?? null;
+
+  return {
+    ...debuggerStatus,
+    sessionMatchesActiveTab: session?.tabId === tabId,
+    session,
+    lastDetach
+  };
 }
 
 async function captureVisible(windowId) {
