@@ -268,11 +268,29 @@ The first executable slice implements only the stable contracts and boundary val
 | Five initial capability ports | `src/browser-capabilities/ports.ts` |
 | Versioned runtime message-envelope validation | `src/browser-capabilities/runtime-message.ts` |
 | Chromium error normalization | `src/browser-extension/chromium/normalize-browser-error.ts` |
+| Narrow Chromium debugger and session-storage API surface | `src/browser-extension/chromium/chromium-api.ts` |
+| Debugger-session evidence storage and live reconciliation | `src/browser-extension/chromium/debugger-session-repository.ts` |
+| Viewport apply, reset, and owned-session cleanup | `src/browser-extension/chromium/viewport-controller.ts` |
 
 The production viewport limits begin at `320 × 240` and end at `7680 × 4320`, matching the range exercised by the disposable Chromium spike. Changing these limits requires boundary evidence and tests.
 
 This slice deliberately adds no browser permission, browser-global call, presentation component, persistence, or user-facing behavior. Concrete Chromium adapters will implement these contracts in subsequent Issue #5 changes. Manual Chrome verification remains required when the first adapter is connected to a production use case.
 
 Contract tests run without browser globals and cover invalid targets, invalid viewport values, hostile objects, unsupported message versions and types, invalid payloads, permission denial, unsupported pages, missing tabs, debugger conflicts, unknown ownership, and raw-error redaction.
+
+The Chromium adapter core follows these ownership rules:
+
+- Only the current repository instance's in-memory ownership set can turn an attached target into `owned`.
+- A replacement repository instance treats an attached target as `external_or_unknown`, even when stored evidence exists.
+- A detached target clears stale evidence and returns `detached`.
+- Viewport apply records current-worker ownership before issuing the emulation command.
+- Apply failure clears the override when possible, detaches the attributable session, and removes its record.
+- Reset does nothing to `external_or_unknown` sessions.
+- Reset preserves attributable evidence when detach fails so the user can retry safely.
+- Successful detach removes stored evidence; detach is the authoritative cleanup path when clearing the emulation command fails.
+
+The adapter core depends only on injected Chromium API contracts. It does not bind `globalThis.chrome`, change the manifest, request a permission, register a runtime message, or expose a user action. Browser-runtime composition and manual Chrome verification remain a separate review step.
+
+Rolling back only the adapter core removes the Chromium API contract, session repository, viewport controller, and their adapter tests. The browser-independent capability contracts remain available for a replacement adapter design. No browser or user-data cleanup is required because the adapter core is not connected to the production runtime.
 
 Rollback removes `src/browser-capabilities/`, the Chromium normalizer, and their tests. Because this slice changes no manifest permission, browser session, page state, or persisted data, rollback requires no user-data migration or browser cleanup.
