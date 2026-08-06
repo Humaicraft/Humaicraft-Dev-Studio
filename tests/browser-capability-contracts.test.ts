@@ -5,6 +5,8 @@ import {
   capabilitySuccess,
   createBrowserTarget,
   createViewportDimensions,
+  type DebuggerSessionRecord,
+  type DebuggerSessionRepository,
   type ViewportController,
 } from "../src/browser-capabilities/index.ts";
 
@@ -140,6 +142,56 @@ describe("browser capability contracts", () => {
     await expect(controller.reset(target.value)).resolves.toEqual({
       ok: true,
       value: undefined,
+    });
+  });
+
+  it("keeps stored debugger evidence separate from live ownership", async () => {
+    const target = createBrowserTarget(42);
+    const viewport = createViewportDimensions({ width: 1280, height: 800 });
+    expect(target.ok && viewport.ok).toBe(true);
+    if (!target.ok || !viewport.ok) {
+      return;
+    }
+
+    const evidence: DebuggerSessionRecord = {
+      schemaVersion: 1,
+      target: target.value,
+      viewport: viewport.value,
+      recordedAtEpochMs: 1_786_000_000_000,
+    };
+    const repository: DebuggerSessionRepository = {
+      async read() {
+        return capabilitySuccess(evidence);
+      },
+      async reconcile() {
+        return capabilitySuccess({
+          ownership: "external_or_unknown",
+          evidence,
+        });
+      },
+      async writeOwned() {
+        return capabilitySuccess(undefined);
+      },
+      async removeOwned() {
+        return capabilitySuccess(undefined);
+      },
+    };
+
+    const stored = await repository.read(target.value);
+    expect(stored).toMatchObject({
+      ok: true,
+      value: { schemaVersion: 1, target: { id: 42 } },
+    });
+    if (stored.ok && stored.value !== null) {
+      expect(stored.value).not.toHaveProperty("ownership");
+    }
+
+    await expect(repository.reconcile(target.value)).resolves.toMatchObject({
+      ok: true,
+      value: {
+        ownership: "external_or_unknown",
+        evidence: { target: { id: 42 } },
+      },
     });
   });
 });

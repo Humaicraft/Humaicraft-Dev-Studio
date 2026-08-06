@@ -82,6 +82,8 @@ Responsibilities:
 
 Stored records must be schema-versioned and must not include URLs or page content.
 
+Stored records contain evidence only and never carry an ownership claim. `owned`, `external_or_unknown`, and `detached` exist only on the result of live reconciliation. Code must not authorize debugger detach from a stored record returned by `read`.
+
 ### `PageAccessController`
 
 Responsibilities:

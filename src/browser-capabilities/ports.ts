@@ -22,23 +22,27 @@ export interface ViewportController {
 
 export type DebuggerOwnership = "owned" | "external_or_unknown" | "detached";
 
-export interface DebuggerSessionEvidence {
+export interface DebuggerSessionRecord {
   readonly schemaVersion: 1;
   readonly target: BrowserTarget;
-  readonly ownership: DebuggerOwnership;
   readonly viewport?: ViewportDimensions;
   readonly recordedAtEpochMs: number;
+}
+
+export interface DebuggerSessionState {
+  readonly ownership: DebuggerOwnership;
+  readonly evidence: DebuggerSessionRecord | null;
 }
 
 export interface DebuggerSessionRepository {
   read(
     target: BrowserTarget,
-  ): Promise<CapabilityResult<DebuggerSessionEvidence | null>>;
+  ): Promise<CapabilityResult<DebuggerSessionRecord | null>>;
   reconcile(
     target: BrowserTarget,
-  ): Promise<CapabilityResult<DebuggerSessionEvidence>>;
+  ): Promise<CapabilityResult<DebuggerSessionState>>;
   writeOwned(
-    evidence: DebuggerSessionEvidence & { readonly ownership: "owned" },
+    evidence: DebuggerSessionRecord,
   ): Promise<CapabilityResult<void>>;
   removeOwned(target: BrowserTarget): Promise<CapabilityResult<void>>;
 }

@@ -29,5 +29,6 @@ The project follows Semantic Versioning when versioned releases begin.
 - GitHub Issues and Pull Requests are the authoritative development record.
 - Browser APIs remain isolated behind narrow production adapters.
 - Unknown debugger ownership fails closed and never authorizes detach.
+- Stored debugger-session records are evidence only; live reconciliation determines ownership.
 - pnpm 10.34.5, TypeScript 6.0.3, Vite 8.2.0, and Vitest 4.1.10 are pinned exactly.
 - No extension, UI, or monorepo framework is adopted initially.
