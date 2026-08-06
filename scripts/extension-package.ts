@@ -23,7 +23,7 @@ const allowedDirectories = new Set(["assets"]);
 const forbiddenNames = new Set([
   ".env",
   ".git",
-  ".DS_Store",
+  ".ds_store",
   "node_modules",
 ]);
 const forbiddenExtensions = [".crx", ".key", ".map", ".pem", ".zip"];
@@ -71,10 +71,23 @@ export function validateRelativePath(filePath: string): void {
   }
 
   const parts = filePath.split("/");
-  if (parts.some((part) => forbiddenNames.has(part))) {
+  if (
+    parts.some((part) => {
+      const normalizedPart = part.toLowerCase();
+      return (
+        forbiddenNames.has(normalizedPart) ||
+        normalizedPart.startsWith(".env.")
+      );
+    })
+  ) {
     throw new Error(`Forbidden package path: ${filePath}`);
   }
-  if (forbiddenExtensions.some((extension) => filePath.endsWith(extension))) {
+  const normalizedFilePath = filePath.toLowerCase();
+  if (
+    forbiddenExtensions.some((extension) =>
+      normalizedFilePath.endsWith(extension),
+    )
+  ) {
     throw new Error(`Forbidden package file: ${filePath}`);
   }
 
