@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Humaicraft Dev Studio — Chromium Spike",
+  "version": "0.0.4",
+  "description": "Disposable proof of concept for Chromium delivery-surface validation.",
+  "permissions": ["activeTab", "debugger", "scripting", "storage", "tabs"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Humaicraft Dev Studio Spike",
+    "default_popup": "popup.html"
+  }
+}

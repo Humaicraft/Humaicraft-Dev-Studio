@@ -44,6 +44,7 @@ Future integrations must use explicit boundaries and must not become dependencie
 - [Product proposal](docs/proposal/product-proposal.md)
 - [Product requirements](docs/requirements/product-requirements.md)
 - [Initial architecture](docs/architecture/initial-architecture.md)
+- [Chromium delivery-surface spike](docs/spikes/chromium-extension-delivery-surface.md)
 - [Browser capability boundaries](docs/architecture/browser-capability-boundaries.md)
 - [Production toolchain decision](docs/decisions/0001-production-toolchain.md)
 - [Development and packaging](docs/development/setup-and-packaging.md)
@@ -82,4 +83,4 @@ The production build and test foundation is being established. The extension she
 
 ## License
 
-License selection is not yet finalized. Do not assume reuse rights until a LICENSE file is approved and added.
+Humaicraft Dev Studio is licensed under the [MIT License](LICENSE).
