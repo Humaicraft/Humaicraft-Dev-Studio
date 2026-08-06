@@ -20,9 +20,16 @@ describe("extension package validation", () => {
     for (const path of [
       "../secret.txt",
       ".env",
+      "assets/.env.local",
+      "assets/.ENV.production",
+      "assets/.DS_Store",
+      "assets/.git/config",
+      "assets/node_modules/package.js",
       "assets/background.js.map",
       "assets/private.pem",
+      "assets/PRIVATE.PEM",
       "assets/nested.zip",
+      "assets/NESTED.ZIP",
       "src/background.js",
       "README.md",
     ]) {
