@@ -10,6 +10,7 @@ Thumbs.db
 node_modules/
 dist/
 coverage/
+release/
 
 # Environment and secrets
 .env
