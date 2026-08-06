@@ -18,6 +18,7 @@ The project follows Semantic Versioning when versioned releases begin.
 - Exact Node.js, pnpm, TypeScript, Vite, and Vitest production toolchain
 - Minimal permission-free Manifest V3 production shell
 - Deterministic repository-owned extension ZIP packaging
+- Browser capability contracts, boundary validators, versioned message validation, and Chromium error normalization
 
 ### Decisions
 

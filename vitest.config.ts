@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     coverage: {
-      include: ["scripts/**/*.ts"],
+      include: ["scripts/**/*.ts", "src/**/*.ts"],
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
     },
