@@ -320,14 +320,15 @@ JSON import/export, screenshots, and inspection follow as separate issues and PR
 
 The following require future Issues or ADRs:
 
-- UI framework
-- Package manager and exact version
-- Build tool
-- Browser-extension framework, if any
+- TypeScript 7 migration
+- UI framework introduction, if a demonstrated requirement justifies one
+- Browser-extension framework introduction, if measured maintenance cost justifies one
 - State-management library
 - Screenshot implementation strategy
-- Monorepo tooling
+- Monorepo tooling introduction, if independently versioned responsibilities require it
 - License
 - Public package naming
 - Plugin SDK
 - AI provider architecture
+
+The initial production toolchain and the decision to begin without UI, extension, or monorepo frameworks are recorded in [ADR 0001](../decisions/0001-production-toolchain.md).

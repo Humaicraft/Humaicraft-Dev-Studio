@@ -2,7 +2,7 @@
 
 Humaicraft Dev Studio is a local-first frontend development workspace for responsive implementation, visual comparison, inspection, screenshots, and review workflows.
 
-The project is currently in the Foundation phase. Product direction, MVP requirements, and the initial architecture are documented before production implementation begins.
+The project is currently establishing the Production Foundation. Product direction, MVP requirements, browser capability boundaries, and the production toolchain are approved before capability implementation begins.
 
 ## Product principle
 
@@ -44,6 +44,9 @@ Future integrations must use explicit boundaries and must not become dependencie
 - [Product proposal](docs/proposal/product-proposal.md)
 - [Product requirements](docs/requirements/product-requirements.md)
 - [Initial architecture](docs/architecture/initial-architecture.md)
+- [Browser capability boundaries](docs/architecture/browser-capability-boundaries.md)
+- [Production toolchain decision](docs/decisions/0001-production-toolchain.md)
+- [Development and packaging](docs/development/setup-and-packaging.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
@@ -58,11 +61,24 @@ GitHub Issues and Pull Requests are the authoritative record for requirements, d
 4. Review before merge.
 5. Update documentation, ROADMAP, and CHANGELOG when required.
 
+## Development environment
+
+The production toolchain uses Node.js 24.15.0 and pnpm 10.34.5:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm verify
+pnpm test:coverage
+pnpm package
+```
+
+See [Development and packaging](docs/development/setup-and-packaging.md) for environment setup, unpacked-extension verification, release contents, and rollback.
+
 ## Status
 
-**M0 — Foundation: In progress**
+**M1 — Viewport Foundation: In progress**
 
-No production feature implementation has started yet.
+The production build and test foundation is being established. The extension shell contains no browser permissions or user-facing viewport capabilities yet.
 
 ## License
 

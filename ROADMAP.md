@@ -2,7 +2,7 @@
 
 ## M0 — Foundation
 
-Status: In progress
+Status: Complete
 
 Goals:
 
@@ -20,6 +20,8 @@ Completion conditions:
 - First implementation vertical slice can be created without undocumented assumptions
 
 ## M1 — Viewport Foundation
+
+Status: In progress
 
 Goals:
 

@@ -1,6 +1,6 @@
 # Browser Capability Boundaries
 
-Status: Proposed for production implementation
+Status: Approved for production implementation
 
 Related: Issue #5, derived from Issue #3
 
