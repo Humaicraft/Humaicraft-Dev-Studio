@@ -19,6 +19,7 @@ The project follows Semantic Versioning when versioned releases begin.
 - Minimal permission-free Manifest V3 production shell
 - Deterministic repository-owned extension ZIP packaging
 - Browser capability contracts, boundary validators, versioned message validation, and Chromium error normalization
+- Chromium debugger-session reconciliation and viewport apply/reset adapter core
 
 ### Decisions
 
@@ -30,5 +31,6 @@ The project follows Semantic Versioning when versioned releases begin.
 - Browser APIs remain isolated behind narrow production adapters.
 - Unknown debugger ownership fails closed and never authorizes detach.
 - Stored debugger-session records are evidence only; live reconciliation determines ownership.
+- Detach is the authoritative owned-session cleanup path when clearing viewport emulation fails.
 - pnpm 10.34.5, TypeScript 6.0.3, Vite 8.2.0, and Vitest 4.1.10 are pinned exactly.
 - No extension, UI, or monorepo framework is adopted initially.
