@@ -253,3 +253,24 @@ The following remain separate decisions:
 - Monorepo tooling
 - Full-page screenshot strategy
 - Firefox and Safari support
+
+## 14. Production implementation map
+
+The first executable slice implements only the stable contracts and boundary validation:
+
+| Responsibility | Production location |
+| --- | --- |
+| Capability results, availability, recoverability, and safe context | `src/browser-capabilities/capability-result.ts` |
+| Browser target validation | `src/browser-capabilities/browser-target.ts` |
+| Viewport dimensions and recorded spike limits | `src/browser-capabilities/viewport.ts` |
+| Five initial capability ports | `src/browser-capabilities/ports.ts` |
+| Versioned runtime message-envelope validation | `src/browser-capabilities/runtime-message.ts` |
+| Chromium error normalization | `src/browser-extension/chromium/normalize-browser-error.ts` |
+
+The production viewport limits begin at `320 × 240` and end at `7680 × 4320`, matching the range exercised by the disposable Chromium spike. Changing these limits requires boundary evidence and tests.
+
+This slice deliberately adds no browser permission, browser-global call, presentation component, persistence, or user-facing behavior. Concrete Chromium adapters will implement these contracts in subsequent Issue #5 changes. Manual Chrome verification remains required when the first adapter is connected to a production use case.
+
+Contract tests run without browser globals and cover invalid targets, invalid viewport values, hostile objects, unsupported message versions and types, invalid payloads, permission denial, unsupported pages, missing tabs, debugger conflicts, unknown ownership, and raw-error redaction.
+
+Rollback removes `src/browser-capabilities/`, the Chromium normalizer, and their tests. Because this slice changes no manifest permission, browser session, page state, or persisted data, rollback requires no user-data migration or browser cleanup.

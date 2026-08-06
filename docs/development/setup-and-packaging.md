@@ -35,7 +35,7 @@ pnpm verify
 
 `verify` runs type checking, unit tests, the production build, and built-extension validation. Coverage remains a separate command so a normal verification run does not duplicate the test suite.
 
-Vitest verifies TypeScript and packaging rules. It does not prove that service-worker lifecycle, browser permissions, debugger ownership, restricted pages, or cleanup work in Chrome.
+Vitest verifies TypeScript, packaging rules, browser-capability contracts, boundary validation, and Chromium error normalization. Contract tests use browser-free doubles; they do not prove that service-worker lifecycle, browser permissions, debugger ownership, restricted pages, or cleanup work in Chrome.
 
 ## Build output
 

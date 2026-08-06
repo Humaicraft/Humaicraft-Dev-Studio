@@ -27,6 +27,7 @@ Goals:
 
 - Validate Chromium extension feasibility
 - Establish minimal build and test environment
+- Establish stable production browser capability contracts
 - Provide built-in viewport presets
 - Support preset selection and reset
 - Persist user-created presets locally
