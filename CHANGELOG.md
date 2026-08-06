@@ -14,6 +14,10 @@ The project follows Semantic Versioning when versioned releases begin.
 - Foundation roadmap
 - Contribution guidelines
 - Repository bootstrap configuration
+- Browser capability production boundaries
+- Exact Node.js, pnpm, TypeScript, Vite, and Vitest production toolchain
+- Minimal permission-free Manifest V3 production shell
+- Deterministic repository-owned extension ZIP packaging
 
 ### Decisions
 
@@ -22,3 +26,7 @@ The project follows Semantic Versioning when versioned releases begin.
 - NeutrA11y integration is deferred and is not an MVP dependency.
 - The MVP prioritizes viewport, preset sharing, design comparison, inspection, screenshots, and breakpoint comparison.
 - GitHub Issues and Pull Requests are the authoritative development record.
+- Browser APIs remain isolated behind narrow production adapters.
+- Unknown debugger ownership fails closed and never authorizes detach.
+- pnpm 10.34.5, TypeScript 6.0.3, Vite 8.2.0, and Vitest 4.1.10 are pinned exactly.
+- No extension, UI, or monorepo framework is adopted initially.

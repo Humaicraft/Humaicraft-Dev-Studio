@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Humaicraft Dev Studio",
+  "version": "0.0.0",
+  "description": "Local-first browser tooling for evidence-based frontend development.",
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  }
+}
