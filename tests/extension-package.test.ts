@@ -9,7 +9,10 @@ describe("extension package validation", () => {
   it("accepts only reviewed production paths", () => {
     for (const path of [
       "manifest.json",
+      "popup.html",
       "assets/background.js",
+      "assets/popup.js",
+      "assets/popup-abc123.css",
       "assets/runtime-abc123.js",
     ]) {
       expect(() => validateRelativePath(path)).not.toThrow();
@@ -50,15 +53,31 @@ describe("extension package validation", () => {
   it("requires the manifest service worker to exist", () => {
     const manifest = {
       background: { service_worker: "assets/background.js" },
+      action: { default_popup: "popup.html" },
     };
+    expect(() =>
+      validateManifestReferences(manifest, [
+        "manifest.json",
+        "popup.html",
+        "assets/background.js",
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      validateManifestReferences(manifest, ["manifest.json", "popup.html"]),
+    ).toThrow(/missing package file/);
+  });
+
+  it("requires the manifest popup to exist", () => {
+    const manifest = {
+      background: { service_worker: "assets/background.js" },
+      action: { default_popup: "popup.html" },
+    };
+
     expect(() =>
       validateManifestReferences(manifest, [
         "manifest.json",
         "assets/background.js",
       ]),
-    ).not.toThrow();
-    expect(() =>
-      validateManifestReferences(manifest, ["manifest.json"]),
     ).toThrow(/missing package file/);
   });
 });

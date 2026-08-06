@@ -19,6 +19,12 @@ export interface RuntimeMessageDefinition<TType extends string, TPayload> {
 }
 
 const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const RUNTIME_MESSAGE_KEYS = [
+  "version",
+  "type",
+  "correlationId",
+  "payload",
+] as const;
 
 function isRecord(input: unknown): input is Record<string, unknown> {
   try {
@@ -33,6 +39,19 @@ export function validateRuntimeMessage<TType extends string, TPayload>(
   definition: RuntimeMessageDefinition<TType, TPayload>,
 ): CapabilityResult<RuntimeMessage<TType, TPayload>> {
   if (!isRecord(input)) {
+    return invalidMessage("message_shape_invalid");
+  }
+
+  try {
+    const allowedKeys = new Set<string>(RUNTIME_MESSAGE_KEYS);
+    if (
+      !Reflect.ownKeys(input).every(
+        (key) => typeof key === "string" && allowedKeys.has(key),
+      )
+    ) {
+      return invalidMessage("message_shape_invalid");
+    }
+  } catch {
     return invalidMessage("message_shape_invalid");
   }
 

@@ -18,7 +18,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distDirectory = join(repositoryRoot, "dist");
 const releaseDirectory = join(repositoryRoot, "release");
 const normalizedTimestamp = new Date("2000-01-01T00:00:00.000Z");
-const allowedTopLevelFiles = new Set(["manifest.json"]);
+const allowedTopLevelFiles = new Set(["manifest.json", "popup.html"]);
 const allowedDirectories = new Set(["assets"]);
 const forbiddenNames = new Set([
   ".env",
@@ -133,6 +133,15 @@ export function validateManifestReferences(
     throw new Error(
       `Manifest references missing package file: ${serviceWorker}`,
     );
+  }
+
+  const action = manifest.action;
+  if (!isJsonRecord(action)) {
+    throw new Error("Built manifest must define an action entry point.");
+  }
+  const popup = readRequiredString(action, "default_popup");
+  if (!files.includes(popup)) {
+    throw new Error(`Manifest references missing package file: ${popup}`);
   }
 }
 
