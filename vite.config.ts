@@ -8,6 +8,7 @@ export default defineConfig({
   publicDir: "public",
   build: {
     emptyOutDir: true,
+    modulePreload: { polyfill: false },
     outDir: "dist",
     sourcemap: false,
     target: "es2022",
@@ -17,6 +18,7 @@ export default defineConfig({
           repositoryRoot,
           "src/browser-extension/background.ts",
         ),
+        popup: resolve(repositoryRoot, "popup.html"),
       },
       output: {
         assetFileNames: "assets/[name]-[hash][extname]",

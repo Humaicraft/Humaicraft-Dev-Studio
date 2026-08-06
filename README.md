@@ -79,7 +79,7 @@ See [Development and packaging](docs/development/setup-and-packaging.md) for env
 
 **M1 — Viewport Foundation: In progress**
 
-The production build and test foundation is being established. The extension shell contains no browser permissions or user-facing viewport capabilities yet.
+The production extension now contains the first reviewable viewport vertical slice: strict runtime-message validation, Chromium debugger ownership and cleanup, and a minimal accessible popup for exact apply/reset actions. Preset management and the remaining M1 product UI are still in progress.
 
 ## License
 

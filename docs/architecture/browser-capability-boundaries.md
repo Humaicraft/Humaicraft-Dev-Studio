@@ -157,6 +157,8 @@ Unknown versions and message types fail closed.
 
 The receiving runtime validates every message independently. Extension ownership is not a trust substitute.
 
+The first connected viewport slice supports only `viewport.apply` and `viewport.reset`. The Chromium popup adapter selects the active tab, reads only its numeric ID, creates a versioned message, and validates the normalized service-worker response. The application handler validates the envelope and exact payload shape before invoking `ViewportController`. Presentation code never calls a browser API or renders a raw browser response.
+
 ## 7. Session ownership and recovery
 
 The spike established these production rules:
@@ -271,6 +273,10 @@ The first executable slice implements only the stable contracts and boundary val
 | Narrow Chromium debugger and session-storage API surface | `src/browser-extension/chromium/chromium-api.ts` |
 | Debugger-session evidence storage and live reconciliation | `src/browser-extension/chromium/debugger-session-repository.ts` |
 | Viewport apply, reset, and owned-session cleanup | `src/browser-extension/chromium/viewport-controller.ts` |
+| Viewport message use case, payload validation, and normalized response validation | `src/application/viewport-action.ts` |
+| Chromium popup target selection and runtime-message client | `src/browser-extension/chromium/viewport-action-client.ts` |
+| Chromium service-worker composition and listener registration | `src/browser-extension/chromium/background-runtime.ts` |
+| Semantic popup presentation and recovery status mapping | `popup.html`, `src/browser-extension/popup.ts`, and `src/browser-extension/popup-status.ts` |
 
 The production viewport limits begin at `320 × 240` and end at `7680 × 4320`, matching the range exercised by the disposable Chromium spike. Changing these limits requires boundary evidence and tests.
 
@@ -289,8 +295,8 @@ The Chromium adapter core follows these ownership rules:
 - Reset preserves attributable evidence when detach fails so the user can retry safely.
 - Successful detach removes stored evidence; detach is the authoritative cleanup path when clearing the emulation command fails.
 
-The adapter core depends only on injected Chromium API contracts. It does not bind `globalThis.chrome`, change the manifest, request a permission, register a runtime message, or expose a user action. Browser-runtime composition and manual Chrome verification remain a separate review step.
+The connected slice binds Chromium globals only inside Chromium runtime adapters. Its manifest requests `debugger` for exact CDP viewport emulation and `storage` for schema-versioned session evidence. It does not request `tabs`, `activeTab`, a host permission, or a content script because `chrome.tabs.query` exposes the active tab ID without granting access to URL, title, favicon, or page content. No remote request or telemetry is introduced.
 
-Rolling back only the adapter core removes the Chromium API contract, session repository, viewport controller, and their adapter tests. The browser-independent capability contracts remain available for a replacement adapter design. No browser or user-data cleanup is required because the adapter core is not connected to the production runtime.
+The popup is intentionally not the full M1 interface. It proves one exact apply/reset path with native form controls, visible focus, a polite live status, and recovery messages derived only from normalized error codes. Presets, preset persistence, and framework selection remain separate decisions.
 
-Rollback removes `src/browser-capabilities/`, the Chromium normalizer, and their tests. Because this slice changes no manifest permission, browser session, page state, or persisted data, rollback requires no user-data migration or browser cleanup.
+Before disabling, reloading, or removing this connected build, the user should reset any active viewport while current-worker ownership remains attributable. Rolling back the connected slice removes the popup, runtime composition, `debugger` and `storage` permissions, and connected-use-case tests. If ownership is ambiguous, rollback must not detach an unknown debugger client; closing or reloading the affected tab is the safe recovery path. The browser-independent contracts and disconnected adapter core can remain for a replacement runtime design.

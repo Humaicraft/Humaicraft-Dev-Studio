@@ -83,6 +83,17 @@ describe("runtime message validation", () => {
       },
       "message_payload_invalid",
     ],
+    [
+      "unexpected envelope field",
+      {
+        version: 1,
+        type: "viewport.apply",
+        correlationId: "request-1",
+        payload: { width: 1280, height: 800 },
+        url: "https://private.example/account",
+      },
+      "message_shape_invalid",
+    ],
   ])("rejects an invalid %s", (_label, input, lifecycleCode) => {
     expect(validateRuntimeMessage(input, viewportApply)).toEqual({
       ok: false,

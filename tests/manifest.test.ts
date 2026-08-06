@@ -20,9 +20,17 @@ describe("production extension manifest", () => {
       version: "0.0.0",
       description:
         "Local-first browser tooling for evidence-based frontend development.",
+      permissions: ["debugger", "storage"],
       background: {
         service_worker: "assets/background.js",
         type: "module",
+      },
+      action: {
+        default_title: "Humaicraft Dev Studio",
+        default_popup: "popup.html",
+      },
+      content_security_policy: {
+        extension_pages: "script-src 'self'; object-src 'self'",
       },
     });
   });

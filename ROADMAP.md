@@ -29,6 +29,7 @@ Goals:
 - Establish minimal build and test environment
 - Establish stable production browser capability contracts
 - Implement safe Chromium viewport ownership and cleanup adapters
+- Connect one validated popup-to-service-worker viewport apply/reset slice
 - Provide built-in viewport presets
 - Support preset selection and reset
 - Persist user-created presets locally
