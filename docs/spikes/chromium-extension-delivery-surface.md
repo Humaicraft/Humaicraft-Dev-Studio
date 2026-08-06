@@ -1,6 +1,6 @@
 # Chromium Extension Delivery-Surface Spike
 
-Status: In progress
+Status: Complete
 
 Related: Issue #3
 
@@ -38,7 +38,7 @@ Do not use production administration screens, authenticated customer data, payme
 | Permission | Experiment | Justification | Production decision |
 | --- | --- | --- | --- |
 | `activeTab` | Current-page actions | Grants temporary access after explicit extension interaction | May not cover asynchronous popup-to-worker execution reliably by itself |
-| `debugger` | Exact viewport override | Required to test CDP emulation feasibility | High-risk; pending recovery evidence |
+| `debugger` | Exact viewport override | Required to test CDP emulation feasibility | Viable only with attributable ownership, fail-closed handling, and explicit reset |
 | `scripting` | Width inspection and marker | Runs isolated, explicit page measurement | Viable in Chrome with explicit current-origin permission |
 | `storage` | Recovery diagnostics | Stores only tab ID, dimensions, timestamps, and debugger detach reason in session storage | Spike-only evidence; production persistence still undecided |
 | `tabs` | Active-tab metadata and capture orchestration | Needed by the current proof of concept | Review whether reducible |
@@ -57,13 +57,13 @@ Record evidence; do not mark a result from assumption.
 | Extension loads | Pass | Not tested | Not tested | Not tested | Chrome unpacked extension loaded successfully |
 | Apply 1280 × 800 | Pass | Not tested | Not tested | Not tested | Popup reported `Viewport applied: 1280 × 800.` |
 | Reset viewport | Pass | Not tested | Not tested | Not tested | Current worker ownership was confirmed before apply and cleared after reset |
-| Navigate while active | Not tested | Not tested | Not tested | Not tested | Recovery diagnostics added in `0.0.4` |
-| Close tab while active | Not tested | Not tested | Not tested | Not tested | Recovery diagnostics added in `0.0.4` |
-| Reload extension while active | Not tested | Not tested | Not tested | Not tested | Session storage and ownership reconciliation must be observed |
+| Navigate while active | Pass | Not tested | Not tested | Not tested | The owned session remained attributable across normal same-tab navigation |
+| Close tab while active | Pass | Not tested | Not tested | Not tested | Chromium emitted `target_closed`; production must reconcile stale diagnostic metadata |
+| Reload extension while active | Pass | Not tested | Not tested | Not tested | Reload detached safely and cleared session storage; production must require explicit reapply |
 | Open DevTools conflict | Partial pass | Not tested | Not tested | Not tested | Ownership can now be distinguished from an unknown debugger client |
 | Capture visible area | Pass | Not tested | Not tested | Not tested | Optional current-origin permission allowed local visible-area PNG capture |
 | Inspect width and remove marker | Pass | Not tested | Not tested | Not tested | Width and overflow measurement succeeded; marker cleanup confirmed |
-| Restricted page error | Not tested | Not tested | Not tested | Not tested | |
+| Restricted page error | Investigated | Not tested | Not tested | Not tested | Protected targets require preflight classification and normalized failure handling in #7 |
 | Permission-denied behavior | Pass | Not tested | Not tested | Not tested | Browser surfaced missing host permission without leaking page content |
 | Manifest validation | Fixed | Not tested | Not tested | Not tested | Removed unknown `permissions` manifest entry |
 
@@ -90,6 +90,18 @@ After spike version `0.0.3`, the expected sequence was confirmed:
 
 This confirms that current-worker ownership can be tracked during one live service-worker instance. It does not prove durable recovery after extension reload or worker suspension.
 
+### Recovery behavior
+
+The Chrome recovery runs established the MVP lifecycle policy:
+
+- Normal same-tab navigation may preserve an attributable viewport session.
+- Closing the controlled tab emits `target_closed`; stored metadata is not proof of a live session and must be reconciled.
+- Reloading or replacing the extension ends the active viewport session and clears session storage.
+- Production must not restore a debugger session automatically after reload or update. The user must explicitly reapply the viewport.
+- Unknown debugger ownership must fail closed and must never trigger detach.
+
+These findings are production requirements in #6 rather than production code copied from the spike.
+
 ### Inspection
 
 ```text
@@ -100,6 +112,12 @@ Temporary marker cleanup: confirmed
 ```
 
 The measured page exceeded the CSS viewport by 30 pixels. The inspector returned serializable evidence and did not expose page HTML, form values, cookies, credentials, or live DOM references.
+
+### Restricted targets
+
+The restricted-page investigation established that browser-protected targets cannot be made reliable by requesting broader permanent access. Production must classify each capability before mutation, report an understandable unsupported or permission-denied result, and leave no debugger session, page mutation, or stale state behind. The production verification matrix is tracked in #7.
+
+Chrome was the available browser for the recorded spike runs. Edge, Arc, and Brave remain explicitly unverified rather than being inferred from Chrome behavior.
 
 ## Findings
 
@@ -193,23 +211,23 @@ The popup must not become the domain or application layer. Browser errors must b
 
 ## Recommendation
 
-**Preliminary recommendation: Proceed with constraints.**
+**Final recommendation: Proceed with constraints.**
 
-The Chrome extension delivery surface is viable for exact viewport control, visible screenshots, isolated inspection, explicit cleanup, and current-worker debugger ownership. Production architecture must still resolve durable recovery, restricted pages, full-page screenshots, and browser compatibility.
+The Chrome extension delivery surface is viable for exact viewport control, visible screenshots, isolated inspection, explicit cleanup, and attributable debugger ownership. Production work must implement the approved ports and adapters separately, preserve fail-closed ownership handling, keep capture local and visible-area-only for MVP, and isolate browser differences. The disposable spike code must not be promoted unchanged.
 
 ## Completion record
 
-- [ ] Verification matrix completed where browsers are available
+- [x] Verification matrix completed where browsers are available
 - [x] Exact viewport feasibility demonstrated in Chrome
-- [ ] Navigation, tab-close, and extension-reload recovery decided
-- [ ] Minimum permission set finalized
+- [x] Navigation, tab-close, and extension-reload recovery decided
+- [x] Minimum permission set finalized
 - [x] Visible-area screenshot feasibility demonstrated in Chrome
-- [ ] Full screenshot limitations decided
-- [ ] Restricted-page behavior decided
+- [x] Full screenshot limitations decided
+- [x] Restricted-page behavior decided
 - [x] Permission-denied behavior recorded
 - [x] Isolated overflow evidence demonstrated in Chrome
 - [x] Marker cleanup explicitly confirmed
 - [x] Invalid manifest permission removed
 - [x] Current-worker debugger ownership demonstrated
-- [ ] Security and accessibility observations completed
-- [ ] Final recommendation approved in Issue #3
+- [x] Security and accessibility observations completed
+- [x] Final recommendation approved in Issue #3
